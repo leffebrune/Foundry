@@ -1,0 +1,13 @@
+{
+    "name": "com.leffebrune.foundry",
+    "version": "1.0.0",
+    "displayName": "Foundry",
+    "description": "Foundry Framework",
+    "unity": "6000.0",
+    "author": {
+      "name": "leffebrune",
+      "url": "https://github.com/leffebrune/Foundry"
+    },
+    "keywords": [
+    ]
+}

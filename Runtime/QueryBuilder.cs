@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Foundry
 {
-    public class QueryBuilder : IEnumerable<Entity>
+    public class QueryBuilder : IEnumerable<EntityHandle>
     {
         private readonly World _world;
         private readonly List<Type> _withTypes = new();
@@ -64,7 +64,7 @@ namespace Foundry
         /// <summary>
         /// 쿼리 조건에 따라 최적의 순회 메서드를 선택하여 실행하는 분배기 역할을 합니다.
         /// </summary>
-        public IEnumerator<Entity> GetEnumerator()
+        public IEnumerator<EntityHandle> GetEnumerator()
         {
             // With 조건이 있으면 최적화된 빠른 경로를 사용합니다.
             if (_withTypes.Count > 0)
@@ -78,7 +78,7 @@ namespace Foundry
             }
 
             // 아무 조건도 없으면 빈 결과를 반환합니다.
-            return Enumerable.Empty<Entity>().GetEnumerator();
+            return Enumerable.Empty<EntityHandle>().GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -92,10 +92,10 @@ namespace Foundry
         /// <summary>
         /// [빠른 경로] With 조건 중 가장 작은 풀을 기준으로 순회하는 최적화된 쿼리를 실행합니다.
         /// </summary>
-        private IEnumerator<Entity> GetEnumeratorOptimized()
+        private IEnumerator<EntityHandle> GetEnumeratorOptimized()
         {
             // --- 1. 가장 효율적인 순회 기준(Iteration Source) 찾기 ---
-            IEnumerable<EntityId> iterationSource;
+            IEnumerable<Entity> iterationSource;
 
             if (_withChangedType != null)
             {
@@ -103,7 +103,7 @@ namespace Foundry
                 var changedPool = _world.GetPool(_withChangedType);
                 if (changedPool == null || changedPool.Count == 0) yield break;
 
-                var candidates = new List<EntityId>();
+                var candidates = new List<Entity>();
                 foreach (var entityId in changedPool.AsEntityIds())
                 {
                     if (changedPool.GetTick(entityId) > _changedSinceTick)
@@ -126,7 +126,7 @@ namespace Foundry
             {
                 if (MatchesAllRemainingConditions(entityId))
                 {
-                    yield return new Entity(entityId, _world);
+                    yield return new EntityHandle(entityId, _world);
                 }
             }
         }
@@ -135,13 +135,13 @@ namespace Foundry
         /// [느린 경로] With 조건이 없어 최적화가 불가능할 때, 모든 엔티티를 순회하는 쿼리를 실행합니다.
         /// </summary>
 
-        private IEnumerator<Entity> GetEnumeratorFullScan()
+        private IEnumerator<EntityHandle> GetEnumeratorFullScan()
         {
             foreach (var entityId in _world.GetActiveEntities())
             {
                 if (MatchesAllRemainingConditions(entityId))
                 {
-                    yield return new Entity(entityId, _world);
+                    yield return new EntityHandle(entityId, _world);
                 }
             }
         }
@@ -170,7 +170,7 @@ namespace Foundry
             return smallestPool;
         }
 
-        private bool MatchesAllRemainingConditions(EntityId entityId)
+        private bool MatchesAllRemainingConditions(Entity entityId)
         {
             // With 조건 확인
             foreach (var withType in _withTypes)

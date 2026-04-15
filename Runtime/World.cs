@@ -12,17 +12,20 @@ namespace Foundry
 
         internal EventQueue EventQueue => _eventQueue;
 
-        private readonly HashSet<EntityId> _activeEntities = new();
+        private readonly HashSet<Entity> _activeEntities = new();
         private readonly SystemRegistry _systemRegistry = new();
         private readonly ComponentRegistry _componentRegistry = new();
         private readonly CommandBuffer _commandBuffer = new();
         private readonly EventQueue _eventQueue = new();
-        private EntityId _currentId = new(0);
+        private Entity _currentId = new(0);
 
         private readonly ExecutionPhase[] _phaseOrder =
         {
             ExecutionPhase.Input,
             ExecutionPhase.Validation,
+            
+            ExecutionPhase.Decision,
+            ExecutionPhase.Resolution,
             ExecutionPhase.Execution,
             ExecutionPhase.Reaction,
             ExecutionPhase.ViewCalculation,
@@ -42,7 +45,7 @@ namespace Foundry
         {
         }
 
-        public EntityId CreateEntity()
+        public Entity CreateEntity()
         {
             _currentId = _currentId.Next();
             _activeEntities.Add(_currentId);
@@ -50,12 +53,12 @@ namespace Foundry
             return _currentId;
         }
 
-        public bool IsAlive(EntityId entityId)
+        public bool IsAlive(Entity entityId)
         {
             return _activeEntities.Contains(entityId);
         }
 
-        public void DestroyEntity(EntityId entityId)
+        public void DestroyEntity(Entity entityId)
         {
             if (!_activeEntities.Remove(entityId))
             {
@@ -66,7 +69,7 @@ namespace Foundry
             UnityEngine.Debug.Log($"Entity destroyed with ID: {entityId}");
         }
 
-        public void AddComponent<T>(EntityId entityId, T component) where T : struct, IComponent
+        public void AddComponent<T>(Entity entityId, T component) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -75,7 +78,7 @@ namespace Foundry
             _componentRegistry.AddComponent(entityId, component, Tick);
         }
 
-        public void AddComponent(EntityId entityId, IComponent component)
+        public void AddComponent(Entity entityId, IComponent component)
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -84,7 +87,7 @@ namespace Foundry
             _componentRegistry.AddComponent(entityId, component, Tick);
         }
 
-        public void SetComponent<T>(EntityId entityId, T component) where T : struct, IComponent
+        public void SetComponent<T>(Entity entityId, T component) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -93,7 +96,7 @@ namespace Foundry
             _componentRegistry.SetComponent(entityId, component, Tick);
         }
 
-        public void SetComponent(EntityId entityId, IComponent component)
+        public void SetComponent(Entity entityId, IComponent component)
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -102,7 +105,7 @@ namespace Foundry
             _componentRegistry.SetComponent(entityId, component, Tick);
         }
 
-        public T GetComponent<T>(EntityId entityId) where T : struct, IComponent
+        public T GetComponent<T>(Entity entityId) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -111,7 +114,7 @@ namespace Foundry
             return _componentRegistry.GetComponent<T>(entityId);
         }
 
-        public int GetComponentTick(EntityId entityId, Type componentType)
+        public int GetComponentTick(Entity entityId, Type componentType)
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -120,7 +123,7 @@ namespace Foundry
             return _componentRegistry.GetComponentTick(entityId, componentType);
         }
 
-        public bool IsComponentChangedSince<T>(EntityId entityId, int lastTick) where T : struct, IComponent
+        public bool IsComponentChangedSince<T>(Entity entityId, int lastTick) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -129,7 +132,7 @@ namespace Foundry
             return _componentRegistry.IsComponentChangedSince<T>(entityId, lastTick);
         }
 
-        public bool HasComponent<T>(EntityId entityId) where T : struct, IComponent
+        public bool HasComponent<T>(Entity entityId) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -138,7 +141,7 @@ namespace Foundry
             return _componentRegistry.HasComponent<T>(entityId);
         }
 
-        public bool HasComponent(EntityId entityId, Type componentType)
+        public bool HasComponent(Entity entityId, Type componentType)
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -147,7 +150,7 @@ namespace Foundry
             return _componentRegistry.HasComponent(entityId, componentType);
         }
 
-        public bool TryGetComponent<T>(EntityId entityId, out T component) where T : struct, IComponent
+        public bool TryGetComponent<T>(Entity entityId, out T component) where T : struct, IComponent
         {
             if (HasComponent<T>(entityId))
             {
@@ -158,7 +161,7 @@ namespace Foundry
             return false;
         }
 
-        public void RemoveComponent<T>(EntityId entityId) where T : struct, IComponent
+        public void RemoveComponent<T>(Entity entityId) where T : struct, IComponent
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -167,7 +170,7 @@ namespace Foundry
             _componentRegistry.RemoveComponent<T>(entityId);
         }
 
-        public void RemoveComponent(EntityId entityId, Type componentType)
+        public void RemoveComponent(Entity entityId, Type componentType)
         {
             if (!_activeEntities.Contains(entityId))
             {
@@ -220,7 +223,7 @@ namespace Foundry
             // }
         }
 
-        public IEnumerable<EntityId> GetActiveEntities()
+        public IEnumerable<Entity> GetActiveEntities()
         {
             return _activeEntities;
         }

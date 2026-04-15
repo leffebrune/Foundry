@@ -9,6 +9,8 @@ namespace Foundry
     {
         Input,          // 입력 및 커맨드 생성
         Validation,     // 커맨드 처리 및 유효성 검사
+        Decision,       // 판단 근거 계산
+        Resolution,     // 실행해야 할 작업들 계산
         Execution,      // 핵심 시뮬레이션 (행동)
         Reaction,       // 결과 및 반응 처리
         ViewCalculation,// 뷰 데이터 계산

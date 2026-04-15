@@ -24,7 +24,7 @@ namespace Foundry
             _commandIndex = commandIndex;
         }
 
-        public void ContinueWith(Action<World, EntityId> callback)
+        public void ContinueWith(Action<World, Entity> callback)
         {
             _commandBuffer.AddCallbackToCommand(_commandIndex, callback);
         }
@@ -33,15 +33,15 @@ namespace Foundry
     internal class EntityCommand
     {
         public readonly CommandType Type;
-        public readonly EntityId TargetId;
+        public readonly Entity TargetId;
         public readonly IComponent ComponentData;
         public readonly Type ComponentType;
         public readonly IReadOnlyList<IComponent> ComponentsForCreate;
 
-        public Action<World, EntityId> PostExecutionCallback { get; set; }
+        public Action<World, Entity> PostExecutionCallback { get; set; }
 
 
-        public EntityCommand(CommandType type, EntityId targetId, IComponent componentData, Type componentType, IReadOnlyList<IComponent> componentsForCreate)
+        public EntityCommand(CommandType type, Entity targetId, IComponent componentData, Type componentType, IReadOnlyList<IComponent> componentsForCreate)
         {
             Type = type;
             TargetId = targetId;
@@ -67,7 +67,7 @@ namespace Foundry
             _events.Add(eventData);
         }
 
-        internal void AddCallbackToCommand(int commandIndex, Action<World, EntityId> callback)
+        internal void AddCallbackToCommand(int commandIndex, Action<World, Entity> callback)
         {
             if (commandIndex >= 0 && commandIndex < _commands.Count)
             {
@@ -78,41 +78,41 @@ namespace Foundry
 
         public CommandHandle CreateEntity()
         {
-            _commands.Add(new EntityCommand(CommandType.CreateEntity, EntityId.Invalid, null, null, null));
+            _commands.Add(new EntityCommand(CommandType.CreateEntity, Entity.Invalid, null, null, null));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
         public CommandHandle CreateEntity(IEnumerable<IComponent> components)
         {
-            _commands.Add(new EntityCommand(CommandType.CreateEntity, EntityId.Invalid, null, null, components?.ToList() ?? new List<IComponent>()));
+            _commands.Add(new EntityCommand(CommandType.CreateEntity, Entity.Invalid, null, null, components?.ToList() ?? new List<IComponent>()));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
         public CommandHandle CreateEntity(params IComponent[] components)
         {
-            _commands.Add(new EntityCommand(CommandType.CreateEntity, EntityId.Invalid, null, null, components));
+            _commands.Add(new EntityCommand(CommandType.CreateEntity, Entity.Invalid, null, null, components));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
-        public CommandHandle DestroyEntity(EntityId entityId)
+        public CommandHandle DestroyEntity(Entity entityId)
         {
             _commands.Add(new EntityCommand(CommandType.DestroyEntity, entityId, null, null, null));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
-        public CommandHandle AddComponent<T>(EntityId entityId, T component) where T : struct, IComponent
+        public CommandHandle AddComponent<T>(Entity entityId, T component) where T : struct, IComponent
         {
             _commands.Add(new EntityCommand(CommandType.AddComponent, entityId, component, typeof(T), null));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
-        public CommandHandle RemoveComponent<T>(EntityId entityId) where T : struct, IComponent
+        public CommandHandle RemoveComponent<T>(Entity entityId) where T : struct, IComponent
         {
             _commands.Add(new EntityCommand(CommandType.RemoveComponent, entityId, null, typeof(T), null));
             return new CommandHandle(this, _commands.Count - 1);
         }
 
-        public CommandHandle SetComponent<T>(EntityId entityId, T component) where T : struct, IComponent
+        public CommandHandle SetComponent<T>(Entity entityId, T component) where T : struct, IComponent
         {
             _commands.Add(new EntityCommand(CommandType.SetComponent, entityId, component, typeof(T), null));
             return new CommandHandle(this, _commands.Count - 1);

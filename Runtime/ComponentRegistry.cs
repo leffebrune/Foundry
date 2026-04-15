@@ -42,7 +42,7 @@ namespace Foundry
             return null;
         }
 
-        internal void AddComponent<T>(EntityId entityId, T component, int tick) where T : struct, IComponent
+        internal void AddComponent<T>(Entity entityId, T component, int tick) where T : struct, IComponent
         {
             var pool = GetOrCreatePool<T>();
             if (pool.Has(entityId))
@@ -52,7 +52,7 @@ namespace Foundry
             pool.Set(entityId, component, tick);
         }
 
-        public void AddComponent(EntityId entityId, IComponent component, int tick)
+        public void AddComponent(Entity entityId, IComponent component, int tick)
         {
             var componentType = component.GetType();
             var pool = GetOrCreatePool(componentType);
@@ -63,24 +63,24 @@ namespace Foundry
             pool.Set(entityId, component, tick);
         }
 
-        internal void SetComponent<T>(EntityId entityId, T component, int tick) where T : struct, IComponent
+        internal void SetComponent<T>(Entity entityId, T component, int tick) where T : struct, IComponent
         {
             GetOrCreatePool<T>().Set(entityId, component, tick);
         }
 
-        internal void SetComponent(EntityId entityId, IComponent component, int tick)
+        internal void SetComponent(Entity entityId, IComponent component, int tick)
         {
             var componentType = component.GetType();
             var pool = GetOrCreatePool(componentType);
             pool.Set(entityId, component, tick);
         }
 
-        internal T GetComponent<T>(EntityId entityId) where T : struct, IComponent
+        internal T GetComponent<T>(Entity entityId) where T : struct, IComponent
         {
             return GetOrCreatePool<T>().Get(entityId);
         }
 
-        internal int GetComponentTick(EntityId entityId, Type componentType)
+        internal int GetComponentTick(Entity entityId, Type componentType)
         {
             var pool = GetPool(componentType);
             if (pool == null)
@@ -90,7 +90,7 @@ namespace Foundry
             return pool.GetTick(entityId);
         }
 
-        internal bool IsComponentChangedSince<T>(EntityId entityId, int lastTick) where T : struct, IComponent
+        internal bool IsComponentChangedSince<T>(Entity entityId, int lastTick) where T : struct, IComponent
         {
             var pool = GetPool(typeof(T));
 
@@ -103,28 +103,28 @@ namespace Foundry
             return pool.GetTick(entityId) > lastTick;
         }
 
-        internal bool HasComponent<T>(EntityId entityId) where T : struct, IComponent
+        internal bool HasComponent<T>(Entity entityId) where T : struct, IComponent
         {
             return GetOrCreatePool<T>().Has(entityId);
         }
 
-        internal bool HasComponent(EntityId entityId, Type type)
+        internal bool HasComponent(Entity entityId, Type type)
         {
             var pool = GetOrCreatePool(type);
             return pool != null && pool.Has(entityId);
         }
 
-        internal void RemoveComponent<T>(EntityId entityId) where T : struct, IComponent
+        internal void RemoveComponent<T>(Entity entityId) where T : struct, IComponent
         {
             GetOrCreatePool<T>().Remove(entityId);
         }
 
-        internal void RemoveComponent(EntityId entityId, Type componentType)
+        internal void RemoveComponent(Entity entityId, Type componentType)
         {
             GetOrCreatePool(componentType).Remove(entityId);
         }
 
-        internal void RemoveAllComponents(EntityId entityId)
+        internal void RemoveAllComponents(Entity entityId)
         {
             // 모든 풀을 순회하며 해당 엔티티 ID를 가진 컴포넌트를 제거하도록 요청합니다.
             foreach (var pool in _pools.Values)

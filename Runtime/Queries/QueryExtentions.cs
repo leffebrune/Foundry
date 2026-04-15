@@ -53,7 +53,7 @@ namespace Foundry.Queries // 별도의 네임스페이스로 분리
         /// </summary>
         /// <param name="component">찾은 컴포넌트입니다.</param>
         /// <returns>컴포넌트를 가진 엔티티가 정확히 하나일 경우 true, 그렇지 않으면 false를 반환합니다.</returns>
-        public static bool TryQuerySingletonEntity<T>(this World world, out Entity entity) where T : struct, IComponent
+        public static bool TryQuerySingletonEntity<T>(this World world, out EntityHandle entity) where T : struct, IComponent
         {
             var query = world.Query<T>();
             using var enumerator = query.GetEnumerator();
@@ -81,7 +81,7 @@ namespace Foundry.Queries // 별도의 네임스페이스로 분리
 
 
         /// <exception cref="System.InvalidOperationException">컴포넌트를 가진 엔티티가 없거나 둘 이상일 경우 발생합니다.</exception>
-        public static Entity QuerySingletonEntity<T>(this World world) where T : struct, IComponent
+        public static EntityHandle QuerySingletonEntity<T>(this World world) where T : struct, IComponent
         {
             if (TryQuerySingletonEntity<T>(world, out var entity))
             {

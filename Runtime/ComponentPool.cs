@@ -6,20 +6,20 @@ namespace Foundry
     internal interface IComponentPool
     {
         int Count { get; }
-        IEnumerable<EntityId> AsEntityIds();
+        IEnumerable<Entity> AsEntityIds();
 
-        void Set(EntityId entityId, IComponent componentData, int tick);
-        int GetTick(EntityId entityId);
-        void Remove(EntityId entityId);
-        bool Has(EntityId entityId);
+        void Set(Entity entityId, IComponent componentData, int tick);
+        int GetTick(Entity entityId);
+        void Remove(Entity entityId);
+        bool Has(Entity entityId);
 
         Type GetComponentType();
     }
 
     internal interface IComponentPool<T> : IComponentPool where T : struct, IComponent
     {
-        void Set(EntityId entityId, T component, int tick);
-        T Get(EntityId entityId);
+        void Set(Entity entityId, T component, int tick);
+        T Get(Entity entityId);
     }
 
     internal class ComponentPool<T> : IComponentPool<T> where T : struct, IComponent
@@ -38,10 +38,10 @@ namespace Foundry
 
         private readonly List<ComponentEntry> _components = new();
 
-        private readonly Dictionary<EntityId, int> _entityIdToIndexMap = new();
-        private readonly Dictionary<int, EntityId> _indexToEntityIdMap = new();
+        private readonly Dictionary<Entity, int> _entityIdToIndexMap = new();
+        private readonly Dictionary<int, Entity> _indexToEntityIdMap = new();
 
-        public void Set(EntityId entityId, T component, int tick)
+        public void Set(Entity entityId, T component, int tick)
         {
             var entry = new ComponentEntry(component, tick);
 
@@ -59,7 +59,7 @@ namespace Foundry
         }
 
 
-        public void Set(EntityId entityId, IComponent componentData, int tick)
+        public void Set(Entity entityId, IComponent componentData, int tick)
         {
             if (componentData is not T castedComponent)
             {
@@ -69,7 +69,7 @@ namespace Foundry
             Set(entityId, castedComponent, tick);
         }
 
-        public int GetTick(EntityId entityId)
+        public int GetTick(Entity entityId)
         {
             if (_entityIdToIndexMap.TryGetValue(entityId, out var index))
             {
@@ -78,7 +78,7 @@ namespace Foundry
             return -1; // 컴포넌트가 없으면 유효하지 않은 값 반환
         }
 
-        public T Get(EntityId entityId)
+        public T Get(Entity entityId)
         {
             if (_entityIdToIndexMap.TryGetValue(entityId, out var index))
             {
@@ -87,12 +87,12 @@ namespace Foundry
             return default;
         }
 
-        public bool Has(EntityId entityId)
+        public bool Has(Entity entityId)
         {
             return _entityIdToIndexMap.ContainsKey(entityId);
         }
 
-        public void Remove(EntityId entityId)
+        public void Remove(Entity entityId)
         {
             if (!_entityIdToIndexMap.TryGetValue(entityId, out var indexToRemove))
             {
@@ -126,7 +126,7 @@ namespace Foundry
         }
 
         public int Count => _components.Count;
-        public IEnumerable<EntityId> AsEntityIds() => _entityIdToIndexMap.Keys;
+        public IEnumerable<Entity> AsEntityIds() => _entityIdToIndexMap.Keys;
         public Type GetComponentType() => typeof(T);
     }
 }

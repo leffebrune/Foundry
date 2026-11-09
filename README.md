@@ -1,8 +1,9 @@
 # Foundry
 
-Foundry는 콜로니 심을 비롯한 각종 시뮬레이션 게임의 프로토타입 개발 과정에서 함께 다듬어진 ECS-Like 프레임워크입니다.
-
+Foundry는 콜로니 심과 유사한 시뮬레이션 게임의 프로토타입 개발 과정에서 함께 작성된 ECS-Like 프레임워크입니다.
 이 프레임워크의 목적은 "진짜 ECS"의 극단적인 성능 최적화가 아니라, 시뮬레이션 규칙을 안정적으로 조직하고 확장하기 쉬운 구조를 제공하는 데 있습니다. 특히 로직과 뷰의 분리, 시스템과 컴포넌트의 재사용 가능한 조합, 그리고 실행 순서에 대한 세밀한 보장을 중점적으로 다룹니다.
+
+프로토타이핑 중의 잦은 요구사항 변경에 쉽게 대응하려고 만든 프레임워크이므로, 실제로 최종 제품에 사용되거나, 공개적인 범용 사용을 고려한 구조는 아닙니다. 따라서 CommandHandle 재사용이나 CommandBuffer play callback내에서 스스로에게 커맨드를 추가하는 등의 몇 가지 edge case에서 오류가 있음을 인지하고 있으나, 사용 목적 상 수정하지 않았습니다.
 
 ## 무엇을 위해 만들었는가
 
@@ -46,23 +47,23 @@ Foundry는 고성능 데이터 지향 ECS를 목표로 하지 않습니다.
 - tick 관리
 - 이벤트 수집
 
-모든 시뮬레이션은 `World.Update()`를 통해 한 틱씩 진행됩니다.
+모든 시뮬레이션은 `World.Update()`를 통해 한 틱씩 진행됩니다. 호출할 때마다 `Tick`이 1 증가하며, 해당 틱에서 수집한 이벤트를 담은 `PlaybackResult`를 반환합니다. 외부 입력에서 예약할 변경은 `World.IncomingCommands`에 기록할 수 있습니다.
 
 ### Entity
 
-엔티티는 식별자만 가진 개체입니다. 실제 상태는 컴포넌트 조합으로 표현됩니다.
+엔티티는 식별자만 가진 개체입니다. 식별자는 `Entity`라는 읽기 전용 구조체로 표현하며, 실제 상태는 컴포넌트 조합으로 표현됩니다. 쿼리 결과는 식별자(`Id`)와 컴포넌트 조회 기능을 제공하는 `EntityHandle`입니다.
 
 예를 들어 하나의 주민, 작업 대상, 건물, 일시적인 이벤트 마커도 모두 엔티티로 다룰 수 있습니다.
 
 ### Component
 
-컴포넌트는 상태를 담는 데이터 단위입니다. 엔티티에 필요한 상태를 조합해서 의미를 만듭니다.
+컴포넌트는 `IComponent`를 구현하는 `struct`로, 상태를 담는 데이터 단위입니다. 엔티티에 필요한 상태를 조합해서 의미를 만듭니다. `GetComponent<T>()`는 컴포넌트 값을 반환하므로, 값을 수정한 뒤에는 `SetComponent`로 다시 반영해야 합니다.
 
 이 접근은 상속 중심 구조보다 유연하며, 시뮬레이션 규칙을 작은 조각으로 쪼개는 데 유리합니다.
 
 ### System
 
-시스템은 `World`와 `CommandBuffer`를 받아 규칙을 실행하는 로직 단위입니다.
+시스템은 `ISystem.OnUpdate(World world, CommandBuffer commandBuffer)`를 구현해 규칙을 실행하는 로직 단위입니다.
 
 시스템은 보통 다음 일을 담당합니다.
 
@@ -72,6 +73,8 @@ Foundry는 고성능 데이터 지향 ECS를 목표로 하지 않습니다.
 - 이벤트 발생
 
 중요한 점은 시스템이 월드를 즉시 뒤흔드는 대신, 대체로 `CommandBuffer`를 통해 변경을 예약한다는 점입니다.
+
+시스템은 `World.AddSystem(phase, system, priority)`으로 등록합니다. 같은 구체 타입의 시스템은 월드에 한 번만 등록할 수 있으며, 다른 phase나 priority로 중복 등록해도 경고만 남기고 무시합니다.
 
 ### CommandBuffer
 
@@ -84,34 +87,57 @@ Foundry는 고성능 데이터 지향 ECS를 목표로 하지 않습니다.
 - phase 경계에서 변경을 명시적으로 적용할 수 있다.
 - 실행 순서를 추론하기 쉬워진다.
 
+이 보장은 변경을 버퍼에 예약할 때 적용됩니다. `World`의 생성·수정·삭제 API를 직접 호출하면 즉시 반영됩니다.
+
 ### Query
 
-`Query`는 특정 컴포넌트 조합을 만족하는 엔티티를 조회하기 위한 인터페이스입니다.
+`Foundry.Queries`의 `world.Query<T>()`, `world.Query<T1, T2>()` 등의 확장 메서드는 특정 컴포넌트 조합을 만족하는 엔티티를 조회하는 `QueryBuilder`를 반환합니다.
 
 - `With<T>()`
 - `Without<T>()`
 - `WithChangedSince<T>(tick)`
-- `QuerySingleton<T>()`
+- `world.QuerySingleton<T>()`
+
+`WithChangedSince<T>(tick)`은 해당 컴포넌트의 마지막 추가·설정 틱이 `tick`보다 큰 엔티티를 조회하며, 쿼리당 한 번만 지정할 수 있습니다. `QuerySingleton<T>()`는 해당 컴포넌트를 가진 엔티티가 정확히 하나일 때 그 컴포넌트 값을 반환하고, 없거나 둘 이상이면 예외를 던집니다.
 
 시뮬레이션 규칙을 "어떤 데이터 조합에 반응하는가"라는 형태로 기술할 수 있게 해 줍니다.
 
 ## 실행 모델
 
-Foundry는 미리 정의된 phase 순서에 따라 시스템을 실행합니다.
+Foundry는 다음 8개 phase를 정해진 순서로 실행합니다.
 
-1. `Input`
-2. `Validation`
-3. `Execution`
-4. `Reaction`
-5. `ViewCalculation`
-6. `Cleanup`
+| 순서 | Phase | 역할 |
+| --- | --- | --- |
+| 1 | `Input` | 입력 및 커맨드 생성 |
+| 2 | `Validation` | 커맨드 처리 및 유효성 검사 |
+| 3 | `Decision` | 판단 근거 계산 |
+| 4 | `Resolution` | 실행해야 할 작업 계산 |
+| 5 | `Execution` | 핵심 시뮬레이션과 행동 실행 |
+| 6 | `Reaction` | 결과 및 후속 반응 처리 |
+| 7 | `ViewCalculation` | 뷰 데이터 계산 |
+| 8 | `Cleanup` | 임시 데이터 정리 |
 
-각 phase 안에서는 priority 순서대로 시스템이 실행되고, 해당 phase가 끝날 때 `CommandBuffer`가 playback됩니다.
+각 phase 안에서는 `priority`가 작은 시스템부터 실행되며, 값이 같으면 등록 순서를 유지합니다. 해당 phase의 모든 시스템 실행이 끝나면 공유 `CommandBuffer`가 기록 순서대로 playback됩니다. 시스템이 없는 phase에서도 playback은 수행합니다.
+
+버퍼에 예약한 변경은 같은 phase에서 나중에 실행되는 시스템에도 아직 보이지 않으며, 다음 phase부터 조회할 수 있습니다. 따라서 같은 phase 안에서 priority만 나누어서는 예약한 변경을 순차적으로 읽을 수 없습니다.
+
+### 한 틱의 처리 흐름
+
+1. `Tick`을 증가시키고 이전 틱의 이벤트 큐를 비웁니다.
+2. `IncomingCommands`를 시스템용 버퍼로 복사한 뒤 외부 입력 버퍼를 비웁니다.
+3. `Input` 시스템을 실행하고, 외부 입력 명령과 `Input` 시스템이 예약한 명령을 함께 playback합니다. 외부 입력의 변경은 `Validation`부터 조회할 수 있습니다.
+4. 나머지 phase도 시스템 실행과 playback을 순서대로 반복합니다.
+5. 해당 틱에 수집된 이벤트를 `PlaybackResult.Events`로 반환합니다.
+
+`CommandBuffer.RaiseEvent(IEventData)`로 예약한 이벤트는 playback 시 수집됩니다. `PlaybackResult.Events`는 내부 이벤트 목록을 참조하므로, 다음 `Update()` 이후에도 보관하려면 별도로 복사해야 합니다.
+
+`World.CreateDefault()`는 `Cleanup`에 `DestroyTransientEntitySystem`을 `priority: int.MaxValue`로 자동 등록합니다. 이 시스템은 `ITransient` 마커 컴포넌트를 가진 엔티티를 조회해 파괴 명령을 예약하며, 파괴는 `Cleanup`의 playback에서 반영됩니다.
 
 이 구조는 다음 같은 상황에서 특히 유용합니다.
 
 - 입력을 먼저 수집하고
 - 그 입력이 유효한지 검증한 뒤
+- 판단 근거를 계산하고 실행할 작업을 결정한 다음
 - 실제 상태 변화를 적용하고
 - 후속 반응을 처리하고
 - 마지막에 뷰 계산이나 정리 작업을 분리하는 경우
@@ -192,7 +218,7 @@ world.Update();
 
 ### 뷰 계산 분리 예시
 
-게임 규칙 자체는 `Execution` 또는 `Reaction`에서 처리하고, 화면 표시를 위한 파생 값 계산은 `ViewCalculation`에 두는 식으로 역할을 나눌 수 있습니다. 이 방식은 뷰 코드가 핵심 시뮬레이션 규칙을 오염시키지 않도록 돕습니다.
+판단 근거 계산은 `Decision`, 실행할 작업 계산은 `Resolution`, 실제 행동은 `Execution`, 결과에 따른 후속 처리는 `Reaction`에 둘 수 있습니다. 화면 표시를 위한 파생 값 계산은 `ViewCalculation`에 두는 식으로 역할을 나누면 뷰 코드와 핵심 시뮬레이션 규칙을 분리하기 좋습니다.
 
 ## 현재 구조에서 기대할 수 있는 점
 
@@ -221,3 +247,4 @@ world.Update();
 - SoA 기반 고성능 처리 자체가 핵심 목표인 경우
 - 수십만 개 이상의 엔티티를 극한까지 밀어야 하는 경우
 - 데이터 지향 최적화와 병렬 실행이 최우선인 경우
+
